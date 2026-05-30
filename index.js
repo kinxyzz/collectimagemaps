@@ -26,12 +26,10 @@ function renderTemplate(name, data = {}) {
   return mustache.render(layout, { ...data, body });
 }
 
-// GET / — form pencarian
 app.get("/", (req, res) => {
   res.send(renderTemplate("home", { title: "Maps Photo Scraper" }));
 });
 
-// POST /scrape — jalankan scraper
 app.post("/scrape", async (req, res) => {
   const { query, headless, scrollRounds } = req.body;
 
@@ -50,7 +48,6 @@ app.post("/scrape", async (req, res) => {
       scrollRounds: parseInt(scrollRounds) || 25,
     });
 
-    // Siapkan data foto untuk mustache (buffer tidak bisa JSON langsung)
     const photos = result.photos.map((p, i) => ({
       index: i,
       url: p.highResUrl,
@@ -85,7 +82,6 @@ app.post("/scrape", async (req, res) => {
   }
 });
 
-// GET /photo-proxy?url=... — proxy fetch gambar untuk download (menghindari CORS)
 app.get("/photo-proxy", async (req, res) => {
   const { url } = req.query;
   if (!url) return res.status(400).send("URL required");
