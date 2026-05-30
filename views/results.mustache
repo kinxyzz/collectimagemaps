@@ -1,0 +1,349 @@
+<div class="results-page">
+
+  <!-- Stats bar -->
+  <div class="stats-bar">
+    <div class="stats-left">
+      <a href="/" class="btn btn-ghost btn-sm">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+        Cari lagi
+      </a>
+      <div class="stat-item">
+        <span class="stat-label">Tempat</span>
+        <a href="{{ placeUrl }}" target="_blank" rel="noopener noreferrer" class="stat-value stat-link">{{ placeName }}</a>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Foto lolos filter</span>
+        <span class="stat-value" id="visibleCount">{{ totalPhotos }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Total network</span>
+        <span class="stat-value">{{ totalNetwork }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Scraped</span>
+        <span class="stat-value">{{ scrapedAt }}</span>
+      </div>
+    </div>
+    <div class="stats-right">
+      <button class="btn btn-ghost btn-sm" id="selectAllBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m9 12 2 2 4-4"/></svg>
+        Pilih semua
+      </button>
+      <button class="btn btn-secondary btn-sm" id="downloadSelectedBtn" disabled>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download dipilih (<span id="selectedCount">0</span>)
+      </button>
+      <button class="btn btn-primary btn-sm" id="downloadAllBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download semua
+      </button>
+    </div>
+  </div>
+
+  <!-- Filter & Sort bar -->
+  <div class="filter-bar">
+    <div class="filter-group">
+      <label for="filterSize">Ukuran minimal</label>
+      <select id="filterSize">
+        <option value="0">Semua ukuran</option>
+        <option value="51200">≥ 50 KB</option>
+        <option value="102400">≥ 100 KB</option>
+        <option value="204800">≥ 200 KB</option>
+        <option value="512000">≥ 500 KB</option>
+        <option value="1048576">≥ 1 MB</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label for="filterType">Tipe file</label>
+      <select id="filterType">
+        <option value="">Semua tipe</option>
+        <option value="jpeg">JPEG</option>
+        <option value="png">PNG</option>
+        <option value="webp">WebP</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label for="sortBy">Urutkan</label>
+      <select id="sortBy">
+        <option value="index-asc">Urutan asli</option>
+        <option value="size-desc">Ukuran terbesar</option>
+        <option value="size-asc">Ukuran terkecil</option>
+      </select>
+    </div>
+    <div class="filter-group filter-search">
+      <label for="searchUrl">Cari URL</label>
+      <input type="text" id="searchUrl" placeholder="Filter by URL..." />
+    </div>
+    <button class="btn btn-ghost btn-sm" id="resetFilters">Reset</button>
+  </div>
+
+  <!-- Download progress -->
+  <div class="download-progress" id="downloadProgress" style="display:none;">
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
+    </div>
+    <span id="progressText">Mendownload 0 / 0...</span>
+    <button class="btn btn-ghost btn-sm" id="cancelDownload">Batal</button>
+  </div>
+
+  <!-- Photo grid -->
+  <div class="photo-grid" id="photoGrid">
+    <div class="empty-state" id="emptyState" style="display:none;">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21,15 16,10 5,21"/></svg>
+      <p>Tidak ada foto yang cocok dengan filter.</p>
+    </div>
+  </div>
+
+  <!-- Lightbox -->
+  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" style="display:none;">
+    <button class="lightbox-close" id="lightboxClose" aria-label="Tutup">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <div class="lightbox-nav">
+      <button class="lightbox-prev" id="lightboxPrev" aria-label="Sebelumnya">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+      </button>
+      <button class="lightbox-next" id="lightboxNext" aria-label="Selanjutnya">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+      </button>
+    </div>
+    <img class="lightbox-img" id="lightboxImg" src="" alt="Preview foto" />
+    <div class="lightbox-info" id="lightboxInfo"></div>
+  </div>
+  <div class="lightbox-backdrop" id="lightboxBackdrop" style="display:none;"></div>
+</div>
+
+<script>
+const ALL_PHOTOS = {{{ photos }}};
+let visiblePhotos = [...ALL_PHOTOS];
+let selectedIndices = new Set();
+let cancelDownload = false;
+let lightboxCurrentIdx = 0;
+
+const grid = document.getElementById('photoGrid');
+const emptyState = document.getElementById('emptyState');
+const selectedCountEl = document.getElementById('selectedCount');
+const visibleCountEl = document.getElementById('visibleCount');
+const downloadSelectedBtn = document.getElementById('downloadSelectedBtn');
+const progressWrap = document.getElementById('downloadProgress');
+const progressFill = document.getElementById('progressFill');
+const progressText = document.getElementById('progressText');
+
+// ---- RENDER GRID ----
+function formatSize(bytes) {
+  if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
+  return (bytes / 1024).toFixed(0) + ' KB';
+}
+
+function renderGrid() {
+  // Remove existing cards
+  grid.querySelectorAll('.photo-card').forEach(el => el.remove());
+  emptyState.style.display = visiblePhotos.length === 0 ? 'flex' : 'none';
+  visibleCountEl.textContent = visiblePhotos.length;
+
+  visiblePhotos.forEach((photo, vi) => {
+    const card = document.createElement('div');
+    card.className = 'photo-card' + (selectedIndices.has(photo.index) ? ' selected' : '');
+    card.dataset.index = photo.index;
+    card.dataset.vi = vi;
+    card.innerHTML = `
+      <div class="card-checkbox" data-index="${photo.index}" role="checkbox" aria-checked="${selectedIndices.has(photo.index)}" tabindex="0" aria-label="Pilih foto ${vi+1}">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div class="card-img-wrap">
+        <img
+          src="${photo.url}"
+          alt="Foto ${vi+1}"
+          loading="lazy"
+          decoding="async"
+          onerror="this.closest('.card-img-wrap').classList.add('img-error')"
+        />
+        <div class="card-overlay">
+          <button class="btn-preview" data-vi="${vi}" aria-label="Preview foto">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M11 8v6M8 11h6"/></svg>
+          </button>
+          <button class="btn-download-single" data-url="${photo.url}" data-idx="${photo.index}" aria-label="Download foto ini">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="card-meta">
+        <span class="card-size">${formatSize(photo.sizeBytes)}</span>
+        <span class="card-type">${photo.contentType?.split('/')[1] || 'jpg'}</span>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+
+  // Bind events
+  grid.querySelectorAll('.card-checkbox').forEach(cb => {
+    const handler = () => toggleSelect(parseInt(cb.dataset.index));
+    cb.addEventListener('click', e => { e.stopPropagation(); handler(); });
+    cb.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); handler(); } });
+  });
+
+  grid.querySelectorAll('.btn-preview').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      openLightbox(parseInt(btn.dataset.vi));
+    });
+  });
+
+  grid.querySelectorAll('.btn-download-single').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      downloadOne(btn.dataset.url, `maps-photo-${btn.dataset.idx}.jpg`);
+    });
+  });
+
+  grid.querySelectorAll('.photo-card').forEach(card => {
+    card.addEventListener('click', () => toggleSelect(parseInt(card.dataset.index)));
+  });
+}
+
+// ---- SELECTION ----
+function toggleSelect(index) {
+  if (selectedIndices.has(index)) selectedIndices.delete(index);
+  else selectedIndices.add(index);
+  updateSelection();
+  renderGrid();
+}
+
+function updateSelection() {
+  const count = selectedIndices.size;
+  selectedCountEl.textContent = count;
+  downloadSelectedBtn.disabled = count === 0;
+}
+
+document.getElementById('selectAllBtn').addEventListener('click', () => {
+  if (selectedIndices.size === visiblePhotos.length) {
+    selectedIndices.clear();
+  } else {
+    visiblePhotos.forEach(p => selectedIndices.add(p.index));
+  }
+  updateSelection();
+  renderGrid();
+});
+
+// ---- FILTER & SORT ----
+function applyFilters() {
+  const minSize = parseInt(document.getElementById('filterSize').value) || 0;
+  const typeFilter = document.getElementById('filterType').value.toLowerCase();
+  const sortBy = document.getElementById('sortBy').value;
+  const urlSearch = document.getElementById('searchUrl').value.toLowerCase();
+
+  let result = ALL_PHOTOS.filter(p => {
+    if (p.sizeBytes < minSize) return false;
+    if (typeFilter && !(p.contentType || '').toLowerCase().includes(typeFilter)) return false;
+    if (urlSearch && !p.url.toLowerCase().includes(urlSearch)) return false;
+    return true;
+  });
+
+  if (sortBy === 'size-desc') result.sort((a, b) => b.sizeBytes - a.sizeBytes);
+  else if (sortBy === 'size-asc') result.sort((a, b) => a.sizeBytes - b.sizeBytes);
+
+  visiblePhotos = result;
+  renderGrid();
+}
+
+['filterSize', 'filterType', 'sortBy', 'searchUrl'].forEach(id => {
+  document.getElementById(id).addEventListener('change', applyFilters);
+  if (id === 'searchUrl') document.getElementById(id).addEventListener('input', applyFilters);
+});
+
+document.getElementById('resetFilters').addEventListener('click', () => {
+  document.getElementById('filterSize').value = '0';
+  document.getElementById('filterType').value = '';
+  document.getElementById('sortBy').value = 'index-asc';
+  document.getElementById('searchUrl').value = '';
+  applyFilters();
+});
+
+// ---- DOWNLOAD ----
+async function downloadOne(url, filename) {
+  const a = document.createElement('a');
+  a.href = `/photo-proxy?url=${encodeURIComponent(url)}`;
+  a.download = filename;
+  a.click();
+}
+
+async function downloadBatch(photos) {
+  cancelDownload = false;
+  progressWrap.style.display = 'flex';
+  let done = 0;
+
+  for (const photo of photos) {
+    if (cancelDownload) break;
+    await downloadOne(photo.url, `maps-photo-${photo.index}.jpg`);
+    done++;
+    const pct = Math.round((done / photos.length) * 100);
+    progressFill.style.width = pct + '%';
+    progressText.textContent = `Mendownload ${done} / ${photos.length}...`;
+    await new Promise(r => setTimeout(r, 300));
+  }
+
+  progressWrap.style.display = 'none';
+  progressFill.style.width = '0%';
+}
+
+document.getElementById('downloadAllBtn').addEventListener('click', () => {
+  downloadBatch(visiblePhotos);
+});
+
+document.getElementById('downloadSelectedBtn').addEventListener('click', () => {
+  const selected = visiblePhotos.filter(p => selectedIndices.has(p.index));
+  downloadBatch(selected);
+});
+
+document.getElementById('cancelDownload').addEventListener('click', () => {
+  cancelDownload = true;
+  progressWrap.style.display = 'none';
+});
+
+// ---- LIGHTBOX ----
+const lightbox = document.getElementById('lightbox');
+const lightboxBackdrop = document.getElementById('lightboxBackdrop');
+const lightboxImg = document.getElementById('lightboxImg');
+const lightboxInfo = document.getElementById('lightboxInfo');
+
+function openLightbox(vi) {
+  lightboxCurrentIdx = vi;
+  const p = visiblePhotos[vi];
+  lightboxImg.src = p.url;
+  lightboxInfo.textContent = `${vi + 1} / ${visiblePhotos.length}  •  ${formatSize(p.sizeBytes)}  •  ${p.contentType || 'image/jpeg'}`;
+  lightbox.style.display = 'flex';
+  lightboxBackdrop.style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeLightbox() {
+  lightbox.style.display = 'none';
+  lightboxBackdrop.style.display = 'none';
+  document.body.style.overflow = '';
+  lightboxImg.src = '';
+}
+
+document.getElementById('lightboxClose').addEventListener('click', closeLightbox);
+lightboxBackdrop.addEventListener('click', closeLightbox);
+
+document.getElementById('lightboxPrev').addEventListener('click', () => {
+  lightboxCurrentIdx = (lightboxCurrentIdx - 1 + visiblePhotos.length) % visiblePhotos.length;
+  openLightbox(lightboxCurrentIdx);
+});
+
+document.getElementById('lightboxNext').addEventListener('click', () => {
+  lightboxCurrentIdx = (lightboxCurrentIdx + 1) % visiblePhotos.length;
+  openLightbox(lightboxCurrentIdx);
+});
+
+document.addEventListener('keydown', e => {
+  if (lightbox.style.display === 'flex') {
+    if (e.key === 'Escape') closeLightbox();
+    if (e.key === 'ArrowLeft') document.getElementById('lightboxPrev').click();
+    if (e.key === 'ArrowRight') document.getElementById('lightboxNext').click();
+  }
+});
+
+// ---- INIT ----
+renderGrid();
+</script>
