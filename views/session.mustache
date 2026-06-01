@@ -3,25 +3,23 @@
   <!-- Stats bar -->
   <div class="stats-bar">
     <div class="stats-left">
-      <a href="/" class="btn btn-ghost btn-sm">
+      <a href="/gallery" class="btn btn-ghost btn-sm">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
-        Cari lagi
+        Galeri
       </a>
+      {{#queryLabel}}
       <div class="stat-item">
-        <span class="stat-label">Tempat</span>
-        <a href="{{ placeUrl }}" target="_blank" rel="noopener noreferrer" class="stat-value stat-link">{{ placeName }}</a>
+        <span class="stat-label">Query</span>
+        <span class="stat-value">{{ queryLabel }}</span>
+      </div>
+      {{/queryLabel}}
+      <div class="stat-item">
+        <span class="stat-label">Tanggal</span>
+        <span class="stat-value">{{ dateFormatted }}</span>
       </div>
       <div class="stat-item">
-        <span class="stat-label">Foto lolos filter</span>
+        <span class="stat-label">Foto</span>
         <span class="stat-value" id="visibleCount">{{ totalPhotos }}</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">Total network</span>
-        <span class="stat-value">{{ totalNetwork }}</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">Scraped</span>
-        <span class="stat-value">{{ scrapedAt }}</span>
       </div>
     </div>
     <div class="stats-right">
@@ -40,7 +38,7 @@
     </div>
   </div>
 
-  <!-- Filter & Sort bar -->
+  <!-- Filter & Sort -->
   <div class="filter-bar">
     <div class="filter-group">
       <label for="filterSize">Ukuran minimal</label>
@@ -69,10 +67,6 @@
         <option value="size-desc">Ukuran terbesar</option>
         <option value="size-asc">Ukuran terkecil</option>
       </select>
-    </div>
-    <div class="filter-group filter-search">
-      <label for="searchUrl">Cari URL</label>
-      <input type="text" id="searchUrl" placeholder="Filter by URL..." />
     </div>
     <button class="btn btn-ghost btn-sm" id="resetFilters">Reset</button>
   </div>
@@ -129,7 +123,6 @@ const progressWrap = document.getElementById('downloadProgress');
 const progressFill = document.getElementById('progressFill');
 const progressText = document.getElementById('progressText');
 
-// ---- RENDER GRID ----
 function formatSize(bytes) {
   if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
   return (bytes / 1024).toFixed(0) + ' KB';
@@ -145,25 +138,18 @@ function renderGrid() {
     card.className = 'photo-card' + (selectedIndices.has(photo.index) ? ' selected' : '');
     card.dataset.index = photo.index;
     card.dataset.vi = vi;
-    // Gunakan localPath (dari public/images/datescrape/) sebagai src
-    const imgSrc = photo.localPath;
     card.innerHTML = `
       <div class="card-checkbox" data-index="${photo.index}" role="checkbox" aria-checked="${selectedIndices.has(photo.index)}" tabindex="0" aria-label="Pilih foto ${vi+1}">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
       </div>
       <div class="card-img-wrap">
-        <img
-          src="${imgSrc}"
-          alt="Foto ${vi+1}"
-          loading="lazy"
-          decoding="async"
-          onerror="this.closest('.card-img-wrap').classList.add('img-error')"
-        />
+        <img src="${photo.localPath}" alt="Foto ${vi+1}" loading="lazy" decoding="async"
+          onerror="this.closest('.card-img-wrap').classList.add('img-error')" />
         <div class="card-overlay">
           <button class="btn-preview" data-vi="${vi}" aria-label="Preview foto">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M11 8v6M8 11h6"/></svg>
           </button>
-          <button class="btn-download-single" data-localpath="${imgSrc}" data-idx="${photo.index}" aria-label="Download foto ini">
+          <button class="btn-download-single" data-localpath="${photo.localPath}" data-idx="${photo.index}" aria-label="Download foto ini">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           </button>
         </div>
@@ -176,41 +162,28 @@ function renderGrid() {
     grid.appendChild(card);
   });
 
-  // Bind events
   grid.querySelectorAll('.card-checkbox').forEach(cb => {
     const handler = () => toggleSelect(parseInt(cb.dataset.index));
     cb.addEventListener('click', e => { e.stopPropagation(); handler(); });
-    cb.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); handler(); } });
+    cb.addEventListener('keydown', e => { if (e.key===' '||e.key==='Enter'){e.preventDefault();handler();} });
   });
-
   grid.querySelectorAll('.btn-preview').forEach(btn => {
-    btn.addEventListener('click', e => {
-      e.stopPropagation();
-      openLightbox(parseInt(btn.dataset.vi));
-    });
+    btn.addEventListener('click', e => { e.stopPropagation(); openLightbox(parseInt(btn.dataset.vi)); });
   });
-
   grid.querySelectorAll('.btn-download-single').forEach(btn => {
-    btn.addEventListener('click', e => {
-      e.stopPropagation();
-      // Download langsung dari localPath (static file)
-      downloadLocalFile(btn.dataset.localpath, `maps-photo-${btn.dataset.idx}.jpg`);
-    });
+    btn.addEventListener('click', e => { e.stopPropagation(); downloadLocalFile(btn.dataset.localpath, `photo-${btn.dataset.idx}.jpg`); });
   });
-
   grid.querySelectorAll('.photo-card').forEach(card => {
     card.addEventListener('click', () => toggleSelect(parseInt(card.dataset.index)));
   });
 }
 
-// ---- SELECTION ----
 function toggleSelect(index) {
   if (selectedIndices.has(index)) selectedIndices.delete(index);
   else selectedIndices.add(index);
   updateSelection();
   renderGrid();
 }
-
 function updateSelection() {
   const count = selectedIndices.size;
   selectedCountEl.textContent = count;
@@ -218,94 +191,62 @@ function updateSelection() {
 }
 
 document.getElementById('selectAllBtn').addEventListener('click', () => {
-  if (selectedIndices.size === visiblePhotos.length) {
-    selectedIndices.clear();
-  } else {
-    visiblePhotos.forEach(p => selectedIndices.add(p.index));
-  }
-  updateSelection();
-  renderGrid();
+  if (selectedIndices.size === visiblePhotos.length) selectedIndices.clear();
+  else visiblePhotos.forEach(p => selectedIndices.add(p.index));
+  updateSelection(); renderGrid();
 });
 
-// ---- FILTER & SORT ----
 function applyFilters() {
   const minSize = parseInt(document.getElementById('filterSize').value) || 0;
   const typeFilter = document.getElementById('filterType').value.toLowerCase();
   const sortBy = document.getElementById('sortBy').value;
-  const urlSearch = document.getElementById('searchUrl').value.toLowerCase();
-
   let result = ALL_PHOTOS.filter(p => {
     if (p.sizeBytes < minSize) return false;
-    if (typeFilter && !(p.contentType || '').toLowerCase().includes(typeFilter)) return false;
-    if (urlSearch && !(p.localPath || '').toLowerCase().includes(urlSearch)) return false;
+    if (typeFilter && !(p.contentType||'').toLowerCase().includes(typeFilter)) return false;
     return true;
   });
-
-  if (sortBy === 'size-desc') result.sort((a, b) => b.sizeBytes - a.sizeBytes);
-  else if (sortBy === 'size-asc') result.sort((a, b) => a.sizeBytes - b.sizeBytes);
-
-  visiblePhotos = result;
-  renderGrid();
+  if (sortBy === 'size-desc') result.sort((a,b)=>b.sizeBytes-a.sizeBytes);
+  else if (sortBy === 'size-asc') result.sort((a,b)=>a.sizeBytes-b.sizeBytes);
+  visiblePhotos = result; renderGrid();
 }
-
-['filterSize', 'filterType', 'sortBy', 'searchUrl'].forEach(id => {
+['filterSize','filterType','sortBy'].forEach(id => {
   document.getElementById(id).addEventListener('change', applyFilters);
-  if (id === 'searchUrl') document.getElementById(id).addEventListener('input', applyFilters);
 });
-
 document.getElementById('resetFilters').addEventListener('click', () => {
   document.getElementById('filterSize').value = '0';
   document.getElementById('filterType').value = '';
   document.getElementById('sortBy').value = 'index-asc';
-  document.getElementById('searchUrl').value = '';
   applyFilters();
 });
 
-// ---- DOWNLOAD ----
-// Download dari static file lokal (public/images/datescrape/...)
 function downloadLocalFile(localPath, filename) {
   const a = document.createElement('a');
-  a.href = localPath;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  a.href = localPath; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
-
 async function downloadBatch(photos) {
   cancelDownload = false;
   progressWrap.style.display = 'flex';
   let done = 0;
-
   for (const photo of photos) {
     if (cancelDownload) break;
-    downloadLocalFile(photo.localPath, `maps-photo-${photo.index}.jpg`);
+    downloadLocalFile(photo.localPath, `photo-${photo.index}.jpg`);
     done++;
-    const pct = Math.round((done / photos.length) * 100);
-    progressFill.style.width = pct + '%';
+    const pct = Math.round((done/photos.length)*100);
+    progressFill.style.width = pct+'%';
     progressText.textContent = `Mendownload ${done} / ${photos.length}...`;
-    await new Promise(r => setTimeout(r, 300));
+    await new Promise(r=>setTimeout(r,300));
   }
-
-  progressWrap.style.display = 'none';
-  progressFill.style.width = '0%';
+  progressWrap.style.display = 'none'; progressFill.style.width = '0%';
 }
-
-document.getElementById('downloadAllBtn').addEventListener('click', () => {
-  downloadBatch(visiblePhotos);
-});
-
+document.getElementById('downloadAllBtn').addEventListener('click', () => downloadBatch(visiblePhotos));
 document.getElementById('downloadSelectedBtn').addEventListener('click', () => {
-  const selected = visiblePhotos.filter(p => selectedIndices.has(p.index));
-  downloadBatch(selected);
+  downloadBatch(visiblePhotos.filter(p=>selectedIndices.has(p.index)));
 });
-
 document.getElementById('cancelDownload').addEventListener('click', () => {
-  cancelDownload = true;
-  progressWrap.style.display = 'none';
+  cancelDownload = true; progressWrap.style.display = 'none';
 });
 
-// ---- LIGHTBOX ----
 const lightbox = document.getElementById('lightbox');
 const lightboxBackdrop = document.getElementById('lightboxBackdrop');
 const lightboxImg = document.getElementById('lightboxImg');
@@ -314,42 +255,32 @@ const lightboxInfo = document.getElementById('lightboxInfo');
 function openLightbox(vi) {
   lightboxCurrentIdx = vi;
   const p = visiblePhotos[vi];
-  // Lightbox pakai localPath juga
   lightboxImg.src = p.localPath;
-  lightboxInfo.textContent = `${vi + 1} / ${visiblePhotos.length}  •  ${formatSize(p.sizeBytes)}  •  ${p.contentType || 'image/jpeg'}`;
-  lightbox.style.display = 'flex';
-  lightboxBackdrop.style.display = 'block';
+  lightboxInfo.textContent = `${vi+1} / ${visiblePhotos.length}  •  ${formatSize(p.sizeBytes)}  •  ${p.contentType||'image/jpeg'}`;
+  lightbox.style.display = 'flex'; lightboxBackdrop.style.display = 'block';
   document.body.style.overflow = 'hidden';
 }
-
 function closeLightbox() {
-  lightbox.style.display = 'none';
-  lightboxBackdrop.style.display = 'none';
-  document.body.style.overflow = '';
-  lightboxImg.src = '';
+  lightbox.style.display = 'none'; lightboxBackdrop.style.display = 'none';
+  document.body.style.overflow = ''; lightboxImg.src = '';
 }
-
 document.getElementById('lightboxClose').addEventListener('click', closeLightbox);
 lightboxBackdrop.addEventListener('click', closeLightbox);
-
 document.getElementById('lightboxPrev').addEventListener('click', () => {
-  lightboxCurrentIdx = (lightboxCurrentIdx - 1 + visiblePhotos.length) % visiblePhotos.length;
+  lightboxCurrentIdx = (lightboxCurrentIdx-1+visiblePhotos.length)%visiblePhotos.length;
   openLightbox(lightboxCurrentIdx);
 });
-
 document.getElementById('lightboxNext').addEventListener('click', () => {
-  lightboxCurrentIdx = (lightboxCurrentIdx + 1) % visiblePhotos.length;
+  lightboxCurrentIdx = (lightboxCurrentIdx+1)%visiblePhotos.length;
   openLightbox(lightboxCurrentIdx);
 });
-
 document.addEventListener('keydown', e => {
-  if (lightbox.style.display === 'flex') {
-    if (e.key === 'Escape') closeLightbox();
-    if (e.key === 'ArrowLeft') document.getElementById('lightboxPrev').click();
-    if (e.key === 'ArrowRight') document.getElementById('lightboxNext').click();
+  if (lightbox.style.display==='flex') {
+    if (e.key==='Escape') closeLightbox();
+    if (e.key==='ArrowLeft') document.getElementById('lightboxPrev').click();
+    if (e.key==='ArrowRight') document.getElementById('lightboxNext').click();
   }
 });
 
-// ---- INIT ----
 renderGrid();
 </script>

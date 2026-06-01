@@ -50,16 +50,14 @@ temp/
 # Optional npm cache
 .npm/
 
-# TypeScript
 *.tsbuildinfo
 
-# Testing
 jest-results/
 playwright-report/
 test-results/
 
-# Uploads (if user-generated files)
 uploads/
 
-# Docker
 docker-compose.override.yml
+public/images/datescrape/*/
+!public/images/datescrape/.gitkeep

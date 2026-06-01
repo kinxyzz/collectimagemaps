@@ -1,0 +1,128 @@
+<div class="gallery-page">
+
+  <div class="page-header">
+    <div class="page-header-left">
+      <h2>Galeri Scrape</h2>
+      <span class="badge">{{ folderCount }} sesi</span>
+    </div>
+    <a href="/" class="btn btn-primary btn-sm">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      Scrape baru
+    </a>
+  </div>
+
+  {{#isEmpty}}
+  <div class="empty-gallery">
+    <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+    </svg>
+    <p>Belum ada sesi scrape.</p>
+    <a href="/" class="btn btn-primary btn-sm">Mulai scrape pertama</a>
+  </div>
+  {{/isEmpty}}
+
+  {{^isEmpty}}
+  <div class="folder-grid">
+    {{#folders}}
+    <div class="folder-card" data-session-id="{{ sessionId }}">
+      <a class="folder-card-link" href="/gallery/{{ sessionId }}">
+        <div class="folder-thumb">
+          {{#previewImg}}
+          <img src="{{ previewImg }}" alt="Preview" loading="lazy" onerror="this.parentElement.classList.add('no-thumb')" />
+          {{/previewImg}}
+          {{^previewImg}}
+          <div class="folder-thumb-empty">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21,15 16,10 5,21"/></svg>
+          </div>
+          {{/previewImg}}
+          <div class="folder-badge">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21,15 16,10 5,21"/></svg>
+            {{ photoCount }} foto
+          </div>
+        </div>
+        <div class="folder-info">
+          <span class="folder-date">{{ dateFormatted }}</span>
+          <span class="folder-size">{{ totalMB }} MB</span>
+        </div>
+        {{#queryLabel}}
+        <div class="folder-query">{{ queryLabel }}</div>
+        {{/queryLabel}}
+        {{^queryLabel}}
+        <div class="folder-id">{{ sessionId }}</div>
+        {{/queryLabel}}
+      </a>
+      <button
+        class="btn-delete-folder"
+        data-session-id="{{ sessionId }}"
+        data-query="{{ queryLabel }}"
+        aria-label="Hapus sesi {{ sessionId }}"
+        title="Hapus sesi ini"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+        </svg>
+      </button>
+    </div>
+    {{/folders}}
+  </div>
+  {{/isEmpty}}
+
+  <!-- Toast notifikasi -->
+  <div id="toast" class="toast" style="display:none;"></div>
+</div>
+
+<script>
+document.querySelectorAll('.btn-delete-folder').forEach(btn => {
+  btn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const sessionId = btn.dataset.sessionId;
+    const query = btn.dataset.query || sessionId;
+    const confirmed = confirm(`Hapus sesi "${query}"?\n\nSemua foto dalam sesi ini akan dihapus permanen.`);
+    if (!confirmed) return;
+
+    btn.disabled = true;
+    btn.style.opacity = '0.4';
+
+    try {
+      const res = await fetch(`/gallery/${sessionId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.ok) {
+        const card = document.querySelector(`.folder-card[data-session-id="${sessionId}"]`);
+        if (card) {
+          card.style.transition = 'opacity 0.25s, transform 0.25s';
+          card.style.opacity = '0';
+          card.style.transform = 'scale(0.92)';
+          setTimeout(() => {
+            card.remove();
+            // Update badge count
+            const remaining = document.querySelectorAll('.folder-card').length;
+            const badge = document.querySelector('.badge');
+            if (badge) badge.textContent = `${remaining} sesi`;
+            // Tampilkan empty state kalau sudah kosong
+            if (remaining === 0) location.reload();
+          }, 280);
+        }
+        showToast(`Sesi "${query}" berhasil dihapus.`);
+      } else {
+        showToast(data.error || 'Gagal menghapus.', true);
+        btn.disabled = false;
+        btn.style.opacity = '';
+      }
+    } catch (err) {
+      showToast('Gagal menghapus: ' + err.message, true);
+      btn.disabled = false;
+      btn.style.opacity = '';
+    }
+  });
+});
+
+function showToast(msg, isError = false) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.className = 'toast' + (isError ? ' toast-error' : ' toast-success');
+  toast.style.display = 'block';
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => { toast.style.display = 'none'; }, 3000);
+}
+</script>

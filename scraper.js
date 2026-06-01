@@ -2,6 +2,12 @@ import puppeteer from "puppeteer-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
 import https from "https";
 import http from "http";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 puppeteer.use(StealthPlugin());
 
@@ -184,11 +190,46 @@ async function findScrollableLeftPanel(page) {
   return element;
 }
 
+/**
+ * Buat folder untuk sesi scrape ini di public/images/datescrape/<sessionId>
+ */
+function createSessionDir(sessionId) {
+  const baseDir = path.join(__dirname, "public", "images", "datescrape");
+  const sessionDir = path.join(baseDir, sessionId);
+  fs.mkdirSync(sessionDir, { recursive: true });
+  return sessionDir;
+}
+
+/**
+ * Simpan buffer gambar ke disk, return path relatif dari public/ untuk dipakai di <img src>
+ */
+function saveImageToDisk(buffer, contentType, index, sessionDir, sessionId) {
+  const ext = (contentType || "image/jpeg").split("/")[1]?.replace("jpeg", "jpg") || "jpg";
+  const filename = `photo-${String(index).padStart(4, "0")}.${ext}`;
+  const fullPath = path.join(sessionDir, filename);
+  fs.writeFileSync(fullPath, buffer);
+  // path yang dipakai di <img src="/images/datescrape/...">
+  return `/images/datescrape/${sessionId}/${filename}`;
+}
+
 export async function runScraper(query, options = {}) {
   const config = { ...DEFAULT_CONFIG, ...options };
   const log = (msg) => {
     if (typeof config.onProgress === "function") config.onProgress(msg);
   };
+
+  // Buat session ID: <query_slug>_<YYYYMMDD>_<timestamp>
+  const now = new Date();
+  const dateStr = now.toISOString().slice(0, 10).replace(/-/g, "");
+  const timeStr = now.getTime();
+  const querySlug = query
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/gi, "_")   // spasi & karakter non-alphanumeric → _
+    .replace(/^_+|_+$/g, "")        // trim underscore di awal/akhir
+    .slice(0, 40);                  // batasi panjang
+  const sessionId = `${querySlug}_${dateStr}_${timeStr}`;
+  const sessionDir = createSessionDir(sessionId);
 
   const browser = await puppeteer.launch({
     headless: config.headless,
@@ -279,19 +320,29 @@ export async function runScraper(query, options = {}) {
       `Total URL foto terkumpul: ${allUrls.length}. Mulai filter ukuran >50KB...`,
     );
     let fetched = 0;
-    const tasks = allUrls.map((originalUrl) => async () => {
+    const tasks = allUrls.map((originalUrl, taskIndex) => async () => {
       const highResUrl = toHighResUrl(originalUrl);
       const result = await fetchImage(highResUrl, config.minPhotoSizeBytes);
       fetched++;
       if (fetched % 10 === 0)
         log(`Mengecek ukuran foto: ${fetched}/${allUrls.length}...`);
       if (!result) return null;
+
+      // Simpan gambar ke disk
+      const localPath = saveImageToDisk(
+        result.buffer,
+        result.contentType,
+        taskIndex,
+        sessionDir,
+        sessionId,
+      );
+
       return {
         url: originalUrl,
         highResUrl,
+        localPath,         // path untuk <img src>
         sizeBytes: result.sizeBytes,
         contentType: result.contentType,
-        buffer: result.buffer,
       };
     });
     const fetchResults = await pLimit(tasks, config.fetchConcurrency);
@@ -302,6 +353,7 @@ export async function runScraper(query, options = {}) {
     return {
       query,
       scrapedAt: new Date().toISOString(),
+      sessionId,
       place,
       totalPhotoCards,
       totalNetworkImages: allUrls.length,
